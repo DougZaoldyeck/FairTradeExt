@@ -4,6 +4,8 @@ const EllipticCurve = artifacts.require('EllipticCurve')
 const TestHash = artifacts.require('TestHash')
 const ExistingWork = artifacts.require('ExistingWork')
 const FairTradeExt = artifacts.require('FairTradeExt')
+const MerkleProof = artifacts.require('MerkleProof')
+
 
 module.exports = function (deployer) {
     deployer.deploy(HashedTimelock)
@@ -12,4 +14,5 @@ module.exports = function (deployer) {
     deployer.deploy(TestHash)
     deployer.deploy(ExistingWork)
     deployer.deploy(FairTradeExt)
+    deployer.deploy(MerkleProof)
 }
