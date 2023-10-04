@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.5.0;
-pragma experimental ABIEncoderV2;
 
 import "./EllipticCurve.sol";
 
@@ -10,7 +9,7 @@ import "./EllipticCurve.sol";
  *
  * This contract provides a way to create and keep HTLCs for ETH.
  *
- * See ExistingWorkERC20.sol for a contract that provides the same functions
+ * See HashedTimelockERC20.sol for a contract that provides the same functions
  * for ERC20 tokens.
  *
  * Protocol:
@@ -23,14 +22,15 @@ import "./EllipticCurve.sol";
  *      withdraw funds the sender / creator of the HTLC can get their ETH
  *      back with this function.
  */
-contract ExistingWork {
+contract FT {
 
     event LogHTLCNew(
         bytes32 indexed contractId,
         address indexed sender,
         address indexed receiver,
         uint amount,
-        uint256 r1,
+        uint256 sk1x,
+        uint256 sk1y,
         uint timelock
     );
     event LogHTLCWithdraw(bytes32 indexed contractId);
@@ -40,32 +40,19 @@ contract ExistingWork {
         address payable sender;
         address payable receiver;
         uint amount;
-        uint256 r1; //the randomness r1 used by the seller(receiver) for the first signature sig_prev
-        //string m2; //the message m2 negotiated between two parties, which will be signed by the seller(receiver) 
+        uint256 sk1x;
+        uint256 sk1y; //the pre-set results calculated by the buyer(sender) for future checking
         uint timelock; // UNIX timestamp seconds - locked UNTIL this time
         bool withdrawn;
         bool refunded;
     }
     
-    struct WithDrawParam {
-        bytes32 _contractId;
-        uint256 _r2;
-        uint256 _s2;
-        string _m2;
-    }
-    
-    //WithDrawParam[] public WDPs;
-    
-    //Some parameters from Elliptic Curve (secp256k1)
     uint256 public constant GX = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798;
     uint256 public constant GY = 0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8;
     uint256 public constant AA = 0;
     uint256 public constant PP = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F;
-    uint256 public constant NN = 115792089237316195423570985008687907852837564279074904382605163141518161494337;    //order of secp256k1
-    uint256 public constant qx = 103388573995635080359749164254216598308788835304023601477803095234286494993683;    //public key pair (x,y)
-    uint256 public constant qy = 37057141145242123013015316630864329550140216928701153669873286428255828810018;
-    //uint256 public constant r2 = 21505829891763648114329055987619236494102133314575206970830385799158076338148;
-    //uint256 public constant s2 = 62560875960789245167310124323518749634184838256435621860459318052048061205369;
+    //uint256 public constant sk1x = 112711660439710606056748659173929673102114977341539408544630613555209775888121;
+    //uint256 public constant sk1y = 25583027980570883691656905877401976406448868254816295069919888960541586679410;
 
     modifier fundsSent() {
         require(msg.value > 0, "msg.value must be > 0");
@@ -82,44 +69,14 @@ contract ExistingWork {
         require(haveContract(_contractId), "contractId does not exist");
         _;
     }
-    /***
-    modifier s2lockMatches(bytes32 _contractId, uint256 _r2, uint256 _s2, string memory _m2) {
-        //signature s2 verification
-        bytes32 e = keccak256(abi.encodePacked(_m2));
-        uint256 z = uint256(e);
-        uint256 w = EllipticCurve.invMod(_s2,NN);
-        w = w % NN;
-        z = (z * w) % NN;
-        w = (_r2 * w) % NN;
-        uint256 x1;
-        uint256 y1;
-        (x1,y1) = EllipticCurve.ecMul(z,GX,GY,AA,PP); 
-        (z,w) = EllipticCurve.ecMul(w,qx,qy,AA,PP); 
-        (x1,y1) = EllipticCurve.ecAdd(x1,y1,z,w,AA,PP);
-        require(contracts[_contractId].r1 == _r2, "randomness does not match");
-        require(contracts[_contractId].r1 == x1, "signature does not match");
+    modifier sklockMatches(bytes32 _contractId, uint256 sk2) {
+        uint256 sk2x;
+        uint256 sk2y;
+        (sk2x, sk2y) = EllipticCurve.ecMul(sk2,GX,GY,AA,PP);                  //sk2*G(X,Y) 
+        require(contracts[_contractId].sk1x == sk2x, "sk2 does not match");
+        require(contracts[_contractId].sk1y == sk2y, "sk2 does not match");
         _;
     }
-    ***/
-    
-    modifier s2lockMatches(WithDrawParam memory insert) {
-        //signature s2 verification
-        bytes32 e = keccak256(abi.encodePacked(insert._m2));
-        uint256 z = uint256(e);
-        uint256 w = EllipticCurve.invMod(insert._s2,NN);
-        w = w % NN;
-        z = (z * w) % NN;
-        w = (insert._r2 * w) % NN;
-        uint256 x1;
-        uint256 y1;
-        (x1,y1) = EllipticCurve.ecMul(z,GX,GY,AA,PP); 
-        (z,w) = EllipticCurve.ecMul(w,qx,qy,AA,PP); 
-        (x1,y1) = EllipticCurve.ecAdd(x1,y1,z,w,AA,PP);
-        require(contracts[insert._contractId].r1 == insert._r2, "randomness does not match");
-        require(contracts[insert._contractId].r1 == x1, "signature does not match");
-        _;
-    }
-    
     modifier withdrawable(bytes32 _contractId) {
         require(contracts[_contractId].receiver == msg.sender, "withdrawable: not receiver");
         require(contracts[_contractId].withdrawn == false, "withdrawable: already withdrawn");
@@ -141,13 +98,13 @@ contract ExistingWork {
      * providing the reciever lock terms.
      *
      * @param _receiver Receiver of the ETH.
-     * @param _r1 The randomness used for sig_prev. 
+     * @param _sk1x, _sk1y The calculated results based on sk1 which was given during the negotiation phase.
      * @param _timelock UNIX epoch seconds time that the lock expires at.
      *                  Refunds can be made after this time.
      * @return contractId Id of the new HTLC. This is needed for subsequent
      *                    calls.
      */
-    function newContract(address payable _receiver, uint256 _r1, uint _timelock)
+    function newContract(address payable _receiver, uint256 _sk1x, uint256 _sk1y, uint _timelock)
         external
         payable
         fundsSent
@@ -159,7 +116,8 @@ contract ExistingWork {
                 msg.sender,
                 _receiver,
                 msg.value,
-                _r1,
+                _sk1x,
+                _sk1y,
                 _timelock
             )
         );
@@ -174,7 +132,8 @@ contract ExistingWork {
             msg.sender,
             _receiver,
             msg.value,
-            _r1,
+            _sk1x,
+            _sk1y,
             _timelock,
             false,
             false
@@ -185,56 +144,34 @@ contract ExistingWork {
             msg.sender,
             _receiver,
             msg.value,
-            _r1,
+            _sk1x,
+            _sk1y,
             _timelock
         );
     }
-
-
-
 
     /**
      * @dev Called by the receiver once they know sk2.
      * This will transfer the locked funds to their address.
      *
-     * param _contractId Id of the HTLC.
-     * param _r2 randomness for signing m2.
-     * param _s2 signature of m2.
+     * @param _contractId Id of the HTLC.
+     * @param _sk2 G(X,Y)**_sk2 should equal to (sk1x,sk1y).
      * @return bool true on success
      */
-    function withdraw(WithDrawParam memory insert)
-        public
-        contractExists(insert._contractId)
-        s2lockMatches(insert)
-        withdrawable(insert._contractId)
+    function withdraw(bytes32 _contractId, uint256 _sk2)
+        external
+        contractExists(_contractId)
+        sklockMatches(_contractId, _sk2)
+        withdrawable(_contractId)
         returns (bool)
     {
-        LockContract storage c = contracts[insert._contractId];
+        LockContract storage c = contracts[_contractId];
         //c.sk2 = _preimage;
         c.withdrawn = true;
         c.receiver.transfer(c.amount);
-        emit LogHTLCWithdraw(insert._contractId);
+        emit LogHTLCWithdraw(_contractId);
         return true;
     }
-    
-    /**
-     * this is called as a pre-resolve function for inserting a struct
-     * bytes32 _contractId;
-        uint256 _r2;
-        uint256 _s2;
-        string _m2;
-     * 
-     */
-      function getStruct(bytes32 s, uint256 a, uint256 b, string memory c) public returns(bool){
-      WithDrawParam memory input;
-      input._contractId = s;
-      input._r2 = a;
-      input._s2 = b;
-      input._m2 = c;
-      if (withdraw(input) == true)
-      return true;
-  }
-    
 
     /**
      * @dev Called by the sender if there was no withdraw AND the time lock has
@@ -268,19 +205,21 @@ contract ExistingWork {
         address sender,
         address receiver,
         uint amount,
-        uint256 r1,
+        uint256 sk1x,
+        uint256 sk1y,
         uint timelock,
         bool withdrawn,
         bool refunded)
     {
         if (haveContract(_contractId) == false)
-            return (address(0), address(0), 0, 0, 0, false, false);
+            return (address(0), address(0), 0, 0, 0, 0, false, false);
         LockContract storage c = contracts[_contractId];
         return (
             c.sender,
             c.receiver,
             c.amount,
-            c.r1,
+            c.sk1x,
+            c.sk1y,
             c.timelock,
             c.withdrawn,
             c.refunded

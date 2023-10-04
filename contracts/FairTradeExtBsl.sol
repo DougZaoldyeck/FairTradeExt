@@ -22,12 +22,13 @@ import "./EllipticCurve.sol";
  *      withdraw funds the sender / creator of the HTLC can get their ETH
  *      back with this function.
  */
-contract FairTradeExt {
+contract FairTradeExtBsl {
 
     event LogHTLCNew(
         bytes32 indexed contractId,
         address indexed sender,
         address indexed receiver,
+        address seller,
         uint amount,
         uint256 sk1x,
         uint256 sk1y,
@@ -39,6 +40,7 @@ contract FairTradeExt {
     struct LockContract {
         address payable sender;
         address payable receiver;
+        address payable seller;
         uint amount;
         uint256 sk1x;
         uint256 sk1y; //the pre-set results calculated by the buyer(sender) for future checking
@@ -98,13 +100,14 @@ contract FairTradeExt {
      * providing the reciever lock terms.
      *
      * @param _receiver Receiver of the ETH.
+     * @param _seller Seller of the data.
      * @param _sk1x, _sk1y The calculated results based on sk1 which was given during the negotiation phase.
      * @param _timelock UNIX epoch seconds time that the lock expires at.
      *                  Refunds can be made after this time.
      * @return contractId Id of the new HTLC. This is needed for subsequent
      *                    calls.
      */
-    function newContract(address payable _receiver, uint256 _sk1x, uint256 _sk1y, uint _timelock)
+    function newContract(address payable _receiver, address payable _seller, uint256 _sk1x, uint256 _sk1y, uint _timelock)
         external
         payable
         fundsSent
@@ -115,6 +118,7 @@ contract FairTradeExt {
             abi.encodePacked(
                 msg.sender,
                 _receiver,
+                _seller,
                 msg.value,
                 _sk1x,
                 _sk1y,
@@ -131,6 +135,7 @@ contract FairTradeExt {
         contracts[contractId] = LockContract(
             msg.sender,
             _receiver,
+            _seller,
             msg.value,
             _sk1x,
             _sk1y,
@@ -143,6 +148,7 @@ contract FairTradeExt {
             contractId,
             msg.sender,
             _receiver,
+            _seller,
             msg.value,
             _sk1x,
             _sk1y,
@@ -168,7 +174,8 @@ contract FairTradeExt {
         LockContract storage c = contracts[_contractId];
         //c.sk2 = _preimage;
         c.withdrawn = true;
-        c.receiver.transfer(c.amount);
+        c.receiver.transfer(c.amount/2);
+        c.seller.transfer(c.amount/2);
         emit LogHTLCWithdraw(_contractId);
         return true;
     }
@@ -204,6 +211,7 @@ contract FairTradeExt {
     returns (
         address sender,
         address receiver,
+        address seller,
         uint amount,
         uint256 sk1x,
         uint256 sk1y,
@@ -212,11 +220,12 @@ contract FairTradeExt {
         bool refunded)
     {
         if (haveContract(_contractId) == false)
-            return (address(0), address(0), 0, 0, 0, 0, false, false);
+            return (address(0), address(0), address(0), 0, 0, 0, 0, false, false);
         LockContract storage c = contracts[_contractId];
         return (
             c.sender,
             c.receiver,
+            c.seller,
             c.amount,
             c.sk1x,
             c.sk1y,

@@ -1,18 +1,25 @@
 const HashedTimelock = artifacts.require('HashedTimelock')
-//const fairtrade = artifacts.require('fairtrade')
+const FT = artifacts.require('FT')
 const EllipticCurve = artifacts.require('EllipticCurve')
 const TestHash = artifacts.require('TestHash')
 const ExistingWork = artifacts.require('ExistingWork')
-const FairTradeExt = artifacts.require('FairTradeExt')
-const MerkleProof = artifacts.require('MerkleProof')
+const FairTradeExtBsl = artifacts.require('FairTradeExtBsl')
+const NiFT = artifacts.require('NiFT')
+const Delgado = artifacts.require('Delgado')
+const Commitment = artifacts.require('Commitment')
+const FairTradeExtImproved = artifacts.require('FairTradeExtImproved')
+
 
 
 module.exports = function (deployer) {
     deployer.deploy(HashedTimelock)
-    //deployer.deploy(fairtrade)
+    deployer.deploy(FT)
     deployer.deploy(EllipticCurve)
     deployer.deploy(TestHash)
     deployer.deploy(ExistingWork)
-    deployer.deploy(FairTradeExt)
-    deployer.deploy(MerkleProof)
+    deployer.deploy(FairTradeExtBsl)
+    deployer.deploy(NiFT)
+    deployer.deploy(Delgado)
+    deployer.deploy(Commitment)
+    deployer.deploy(FairTradeExtImproved)
 }
