@@ -12353,12 +12353,12 @@
     "5777": {
       "events": {},
       "links": {},
-      "address": "0xbd5C1ef221EDf47Ca249304C3f22462D52bFeFf5",
-      "transactionHash": "0xc55346fe81869e0c29556cf45053bbe170cb79dbb073550cd3e5ec2eb806fd38"
+      "address": "0x2cA9539aa86a6DbdE91E394D9E0FD0cDE28bB01E",
+      "transactionHash": "0xfe89b901883fa7602fc25e3a9d9afc98731cc42dc5335d4cba126c2ceeb1a4f4"
     }
   },
   "schemaVersion": "3.4.1",
-  "updatedAt": "2023-10-09T23:21:52.303Z",
+  "updatedAt": "2023-10-10T00:34:33.271Z",
   "networkType": "ethereum",
   "devdoc": {
     "methods": {

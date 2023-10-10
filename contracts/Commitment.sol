@@ -47,7 +47,7 @@ contract Commitment {
                 data_list[j] = keccak256(abi.encodePacked(data_list[treeSize-1],data_list[treeSize-1]));
                 treeSize = treeSize / 2 + 1;
             } else {
-                data_list[j] = keccak256(abi.encodePacked(data_list[treeSize-1],data_list[treeSize]));
+                data_list[j] = keccak256(abi.encodePacked(data_list[treeSize-1],data_list[treeSize-2]));
                 treeSize = treeSize / 2;
             }
         }

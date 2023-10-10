@@ -33701,12 +33701,12 @@
     "5777": {
       "events": {},
       "links": {},
-      "address": "0x044F0e994d5926dE0b2A327ACF47Ef9a22fbF377",
-      "transactionHash": "0xd0fbba99fa2ccb213abd2e85cbf57675446cac4d08d852de5695899754475a7e"
+      "address": "0x81f5a41f830A0B0E03bc1b672c85001ed2980174",
+      "transactionHash": "0x592698f675324c463b369168a4f68215d7e7173cf00e98e51a62813f8ca6cca8"
     }
   },
   "schemaVersion": "3.4.1",
-  "updatedAt": "2023-10-09T23:21:52.319Z",
+  "updatedAt": "2023-10-10T00:34:33.321Z",
   "networkType": "ethereum",
   "devdoc": {
     "author": "Witnet Foundation",
